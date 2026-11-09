@@ -1,0 +1,70 @@
+#!/bin/sh
+set -eu
+
+SKILL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=${FOLIO_PROJECT_ROOT:-}
+CLI=${FOLIO_CLI_BIN:-}
+# A copied Skill's ../../.. is not a project; do not guess it as one.
+if [ -z "$PROJECT_ROOT" ]; then
+  CANDIDATE_ROOT=$(CDPATH= cd -- "$SKILL_DIR/../../.." 2>/dev/null && pwd) || CANDIDATE_ROOT=
+  if [ -f "$CANDIDATE_ROOT/apps/folio-cli/src/folio.ts" ] ||
+     [ -f "$CANDIDATE_ROOT/apps/folio-cli/dist/folio.mjs" ]; then
+    PROJECT_ROOT=$CANDIDATE_ROOT
+  fi
+fi
+if [ -z "$CLI" ] && [ -n "$PROJECT_ROOT" ]; then
+  CLI="$PROJECT_ROOT/apps/folio-cli/dist/folio.mjs"
+fi
+# Standalone distribution: this repository ships its own built CLI.
+if [ -z "$CLI" ] && [ -f "$SKILL_DIR/bin/folio.mjs" ]; then
+  CLI="$SKILL_DIR/bin/folio.mjs"
+fi
+if [ -z "$CLI" ] && command -v folio >/dev/null 2>&1; then
+  CANDIDATE_CLI=$(command -v folio)
+  # Avoid recursion when PATH points at a Skill wrapper.
+  if [ -f "$CANDIDATE_CLI" ] && ! grep -q '^SKILL_DIR=' "$CANDIDATE_CLI"; then
+    CLI=$CANDIDATE_CLI
+  fi
+fi
+if [ -z "$CLI" ]; then
+  printf '%s\n' '{"ok":false,"error":{"code":"CLI_NOT_FOUND","message":"复制后的Skill须设置FOLIO_PROJECT_ROOT为Folio目录，或FOLIO_CLI_BIN为已安装CLI的绝对路径；不自动安装软件。"}}' >&2
+  exit 1
+fi
+case "$CLI" in
+  /*) ;;
+  *)
+    printf '%s\n' '{"ok":false,"error":{"code":"CLI_PATH_INVALID","message":"FOLIO_CLI_BIN须为绝对路径。"}}' >&2
+    exit 1 ;;
+esac
+
+node_major() {
+  "$1" -p 'Number(process.versions.node.split(".")[0])' 2>/dev/null || printf '0'
+}
+
+NODE_BIN=${FOLIO_NODE:-}
+if [ -z "$NODE_BIN" ] && command -v node >/dev/null 2>&1; then
+  CANDIDATE=$(command -v node)
+  if [ "$(node_major "$CANDIDATE")" -ge 24 ]; then
+    NODE_BIN=$CANDIDATE
+  fi
+fi
+if [ -z "$NODE_BIN" ]; then
+  for CANDIDATE in "$HOME"/.nvm/versions/node/v24*/bin/node; do
+    if [ -x "$CANDIDATE" ] && [ "$(node_major "$CANDIDATE")" -ge 24 ]; then
+      NODE_BIN=$CANDIDATE
+    fi
+  done
+fi
+
+if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ] || [ "$(node_major "$NODE_BIN")" -lt 24 ]; then
+  printf '%s\n' '{"ok":false,"error":{"code":"NODE_MISSING","message":"未找到 Node.js 24 或更高版本；请安装或设置 FOLIO_NODE。"}}' >&2
+  exit 1
+fi
+if [ ! -f "$CLI" ]; then
+  printf '%s\n' '{"ok":false,"error":{"code":"CLI_NOT_BUILT","message":"CLI不存在；请维护者在Folio项目运行 node apps/folio-cli/scripts/build.mjs 后重试。包装器不自动安装或改源码。"}}' >&2
+  exit 1
+fi
+
+# Keep caller cwd for --file; honor the CLI profile's saved origin.
+exec "$NODE_BIN" "$CLI" "$@"
+
