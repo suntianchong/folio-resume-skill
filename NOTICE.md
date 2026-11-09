@@ -1,7 +1,9 @@
 # Licensing and provenance
 
-Private distribution repository. No open-source license is granted for the
-original Folio code or documentation here; all rights reserved by the owner.
+Public repository, viewed and copied for installation as a Skill only. No
+open-source license is granted for the original Folio code or documentation
+here; all rights reserved by the owner. Redistribution, modification or
+derivative publication requires the owner's permission.
 
 `bin/folio.mjs` is a build artifact of the private Folio repository
 (`apps/folio-cli`), bundled for distribution with this Skill. It contains no
