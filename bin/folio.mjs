@@ -20187,13 +20187,26 @@ var checkArguments = () => {
   }
 };
 var openBrowser = (url2) => {
-  if (process.env.FOLIO_NO_OPEN === "1") return;
+  if (process.env.FOLIO_NO_OPEN === "1") return false;
   try {
     if (process.platform === "darwin") {
       execFileSync("open", [url2], { stdio: "ignore" });
+    } else if (process.platform === "win32") {
+      execFileSync("cmd", ["/c", "start", "", url2], { stdio: "ignore" });
+    } else {
+      execFileSync("xdg-open", [url2], { stdio: "ignore" });
     }
+    return true;
   } catch {
+    return false;
   }
+};
+var announceVerificationUrl = (url2) => {
+  process.stderr.write(
+    `[folio] \u8BF7\u5728\u6D4F\u89C8\u5668\u6253\u5F00\u5E76\u786E\u8BA4\u6388\u6743\uFF1A${url2}
+[folio] \u82E5\u6D4F\u89C8\u5668\u672A\u81EA\u52A8\u6253\u5F00\uFF0C\u590D\u5236\u4E0A\u9762\u7684\u94FE\u63A5\u5230\u5DF2\u767B\u5F55 Folio \u7684\u6D4F\u89C8\u5668\u5373\u53EF\u3002
+`
+  );
 };
 async function main() {
   const [group, command] = args;
@@ -20349,11 +20362,13 @@ async function main() {
     if (command === "login" && args.includes("--no-wait")) {
       console.log(JSON.stringify(waiting, null, 2));
       openBrowser(String(start.verificationUri));
+      announceVerificationUrl(String(start.verificationUri));
       return;
     }
     if (!args.includes("--no-wait")) {
       console.log(JSON.stringify(waiting, null, 2));
       openBrowser(String(start.verificationUri));
+      announceVerificationUrl(String(start.verificationUri));
     }
     const deadline = Date.parse(String(start.expiresAt));
     while (Date.now() < deadline) {

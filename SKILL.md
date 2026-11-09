@@ -21,12 +21,10 @@ actions, not SQLite, browser DOM/storage, source files or original attachments.
 ## Tool and connection
 
 `SKILL_DIR` is the directory containing this file. Invoke `"$SKILL_DIR/folio"`;
-caller cwd need not be the project. Node 24+ and a Folio CLI are required; this
-repository bundles a built CLI at `bin/folio.mjs`, so a clone is directly usable.
-When copied into an Agent's skill directory without `bin/`, set
-`FOLIO_PROJECT_ROOT` to the absolute Folio project/client directory, or
-`FOLIO_CLI_BIN` to an already installed CLI's absolute path. No automatic
-software installation or builds.
+caller cwd need not be the project. Node 24+ and a built Folio CLI are required.
+When copied into an Agent's skill directory, set `FOLIO_PROJECT_ROOT` to the
+absolute Folio project/client directory, or `FOLIO_CLI_BIN` to an already
+installed CLI's absolute path. No automatic software installation or builds.
 Installation and the shortest handoff message: [START-HERE.md](START-HERE.md).
 
 1. Run `doctor`, then `auth status`; verify returned origin and account against
@@ -34,8 +32,12 @@ Installation and the shortest handoff message: [START-HERE.md](START-HERE.md).
    stop, not permission to start services or modify payloads.
 2. Only if not connected, use the single resumable pairing flow:
    `auth login --name "<client>" --email "<user-confirmed email>" --no-wait`.
-3. Send the returned `verificationUri` to the user:
-   **“请在 Folio 核对账号与权限并确认；不要发送 Token。确认后告诉我继续。”**
+3. Send the returned `verificationUri` to the user **as a clickable link**, and
+   open it in a browser yourself when one is available (`open`/`xdg-open`/`start`).
+   Say: **“请在 Folio 核对账号与权限并确认；不要发送 Token。确认后告诉我继续。”**
+   If no browser can be opened, give the link and wait — never retry pairing in a
+   loop or approve on the user's behalf. A signed-out user signs in first and is
+   returned to the approval screen.
    Stop until the human approves. Then `auth complete --no-wait`, `auth status`.
    `awaiting_browser_approval` still means STOP, not success. Never approve via
    API/UI for a real user. `--no-wait` produces one JSON result per call.
