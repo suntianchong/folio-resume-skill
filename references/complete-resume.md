@@ -69,9 +69,11 @@ prefix, at most 8,000,000 characters), `fileName`, ISO `updatedAt`,
 `source:"external_agent_synthetic"`, `fictional:true`; set `style.photoMode` to
 `uploaded`. Whole document + portrait is a single pending batch.
 
-Run local input validation then submit, read Proposal and resume back, and
-compare saved version/content. Report facts retained, actual status and portrait
-provenance. Diagnosis measures saved content only; never report the pending
-rewrite's page count as measured. User inspects full preview and accepts/rejects;
-you do not export or apply it. Fictional example task:
+Dry-run layout first with `layout diagnose <resumeId> --file <document.json>`
+(`source: "document"`), run local input validation, then submit. After
+submitting, run `proposal diff <proposalId>`, `layout diagnose <resumeId>
+--proposal <proposalId>`, and `proposal preview <proposalId>` (give the user the
+preview `url`). Report facts retained, actual status, measured page count
+(`source: "proposal"`), and portrait provenance. User inspects full preview and
+accepts/rejects; you do not export or apply it. Fictional example task:
 [COMPLETE-RESUME-TASK.md](../COMPLETE-RESUME-TASK.md).

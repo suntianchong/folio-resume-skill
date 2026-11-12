@@ -8,7 +8,17 @@ var __export = (target, all) => {
 // apps/folio-cli/src/folio.ts
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  accessSync,
+  chmodSync,
+  constants,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync
+} from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -19820,7 +19830,11 @@ var proposalChange = external_exports.discriminatedUnion("op", [
 ]);
 var inputSchemas = {
   "resume.list": external_exports.object({ includeArchived: external_exports.boolean().default(true) }).strict(),
-  "resume.get": external_exports.object({ resumeId: id }).strict(),
+  "resume.get": external_exports.object({
+    resumeId: id,
+    includePhoto: external_exports.boolean().default(false)
+  }).strict(),
+  "resume.outline": external_exports.object({ resumeId: id }).strict(),
   "resume.create": external_exports.object({
     resumeId: id,
     title: external_exports.string().min(1).max(100),
@@ -19846,7 +19860,9 @@ var inputSchemas = {
   }).strict(),
   "resume.layout.diagnose": external_exports.object({
     resumeId: id,
-    targetPages: external_exports.literal(1).default(1)
+    targetPages: external_exports.literal(1).default(1),
+    proposalId: id.optional(),
+    document: document.optional()
   }).strict(),
   "proposal.list": external_exports.object({ resumeId: id }).strict(),
   "proposal.get": external_exports.object({ proposalId: id }).strict(),
@@ -19857,8 +19873,49 @@ var inputSchemas = {
     baseVersion: version2,
     intent: external_exports.string().min(1).max(500),
     changes: external_exports.array(proposalChange).min(1),
+    notes: external_exports.object({
+      rationale: external_exports.array(external_exports.object({
+        target: external_exports.string().min(1).max(160),
+        reason: external_exports.string().min(1).max(400),
+        source: external_exports.string().max(200).optional()
+      })).default([]),
+      tradeoffs: external_exports.array(external_exports.string().min(1).max(400)).default([]),
+      rejected: external_exports.array(external_exports.object({
+        option: external_exports.string().min(1).max(200),
+        reason: external_exports.string().min(1).max(400)
+      })).default([]),
+      openQuestions: external_exports.array(external_exports.string().min(1).max(400)).default([])
+    }).optional(),
     supersedesProposalId: id.optional()
-  }).strict()
+  }).strict(),
+  "proposal.diff": external_exports.object({ proposalId: id }).strict(),
+  "proposal.preview": external_exports.object({ proposalId: id }).strict(),
+  "resume.brief.get": external_exports.object({ resumeId: id }).strict(),
+  "resume.brief.update": external_exports.object({
+    resumeId: id,
+    expectedBriefVersion: external_exports.number().int().nonnegative(),
+    goal: external_exports.string().max(400).optional(),
+    audience: external_exports.string().max(200).optional(),
+    constraints: external_exports.array(external_exports.string().min(1).max(200)).optional(),
+    mustKeep: external_exports.array(external_exports.string().min(1).max(200)).optional(),
+    mustDrop: external_exports.array(external_exports.string().min(1).max(200)).optional(),
+    questions: external_exports.array(external_exports.object({
+      id,
+      question: external_exports.string().min(1).max(300),
+      status: external_exports.enum(["open", "answered", "dropped"]).default("open"),
+      answer: external_exports.string().max(600).optional()
+    })).optional()
+  }).strict(),
+  "resume.target.get": external_exports.object({ resumeId: id }).strict(),
+  "resume.target.update": external_exports.object({
+    resumeId: id,
+    expectedVersion: version2.optional(),
+    role: external_exports.string().max(120).optional(),
+    company: external_exports.string().max(120).optional(),
+    source: external_exports.string().max(500).optional(),
+    jd: external_exports.string().max(15e3).optional()
+  }).strict(),
+  "resume.decisions": external_exports.object({ resumeId: id }).strict()
 };
 var fail = (code, message, details) => {
   throw Object.assign(new Error(message), { code, details });
@@ -19876,6 +19933,15 @@ var validateInput = (name, input2) => {
     const changes = result.data.changes;
     if (changes.some((change) => change.op === "replace_document") && changes.length !== 1) {
       fail("VALIDATION_ERROR", "replace_document \u5FC5\u987B\u662F\u6574\u6279\u7684\u552F\u4E00\u53D8\u66F4\u3002");
+    }
+  }
+  if (name === "resume.target.update") {
+    const targetData = result.data;
+    if (targetData.role === void 0 && targetData.company === void 0 && targetData.source === void 0 && targetData.jd === void 0) {
+      fail(
+        "VALIDATION_ERROR",
+        "\u8BF7\u81F3\u5C11\u63D0\u4F9B\u4E00\u4E2A\u8981\u66F4\u65B0\u7684\u76EE\u6807\u5C97\u4F4D\u5B57\u6BB5\uFF08role / company / source / jd\uFF09\u3002"
+      );
     }
   }
   return result.data;
@@ -19907,11 +19973,31 @@ var loadConfig = () => {
     return fail("CONFIG_INVALID", "\u914D\u7F6E\u6587\u4EF6\u635F\u574F\uFF1B\u672A\u8986\u76D6\u6216\u6E05\u7406\u65E7\u51ED\u8BC1\u3002\u8BF7\u7EF4\u62A4\u8005\u68C0\u67E5\u6B64profile\u3002");
   }
 };
+var assertProfileWritable = () => {
+  try {
+    mkdirSync(configDirectory, { recursive: true, mode: 448 });
+    if (existsSync(configPath)) {
+      accessSync(configPath, constants.W_OK);
+    }
+    const probePath = path.join(configDirectory, `.write-probe-${process.pid}`);
+    writeFileSync(probePath, "ok", { mode: 384 });
+    unlinkSync(probePath);
+  } catch (error62) {
+    fail(
+      "CONFIG_UNWRITABLE",
+      "\u914D\u7F6E\u76EE\u5F55\u6216\u51ED\u8BC1\u6587\u4EF6\u4E0D\u53EF\u5199\uFF1B\u672A\u6D88\u8017\u8BBE\u5907\u6388\u6743\u7801\u3002\u8BF7\u68C0\u67E5 FOLIO_CONFIG_DIR \u6743\u9650\u540E\u91CD\u8BD5\u3002",
+      { profile: configDirectory, cause: error62.code ?? String(error62) }
+    );
+  }
+};
 var saveConfig = (config2) => {
   mkdirSync(configDirectory, { recursive: true, mode: 448 });
-  writeFileSync(configPath, JSON.stringify(config2, null, 2), {
+  const tempPath = path.join(configDirectory, `.config.tmp.${process.pid}`);
+  writeFileSync(tempPath, JSON.stringify(config2, null, 2), {
     mode: 384
   });
+  chmodSync(tempPath, 384);
+  renameSync(tempPath, configPath);
   chmodSync(configPath, 384);
 };
 var keychainService = "com.folio.cli";
@@ -20016,8 +20102,10 @@ var request = async (pathname, options = {}) => {
   }
   const result = body;
   if (!response.ok || !result.ok) {
+    const retryAfter = response.headers.get("retry-after");
+    const details = result.error?.details ?? (retryAfter !== null ? { retryAfterSeconds: Number(retryAfter) || retryAfter } : void 0);
     const error62 = new Error(result.error?.message ?? `HTTP ${response.status}`);
-    Object.assign(error62, { code: result.error?.code, status: response.status, details: result.error?.details });
+    Object.assign(error62, { code: result.error?.code, status: response.status, details });
     throw error62;
   }
   return result;
@@ -20080,18 +20168,26 @@ var commandSpecs = [
   ["action schema", "Offline input JSON Schema including nested Proposal changes", "", "actionName"],
   ["action validate", "Offline input validation; does not prove facts/state/server acceptance", "--file", "actionName"],
   ["action run", "Execute only an allowed live-catalog action", "--file", "actionName"],
-  ["resume list", "Active resumes; --archived includes archived, never trash", "--archived", "resume.list"],
-  ["resume get", "Read latest saved resume", "", "resume.get"],
-  ["resume create", "Create independent blank draft", "--id --title --language --idempotency-key", "resume.create"],
-  ["resume copy", "Copy latest saved source to independent draft", "--id --title --version --idempotency-key", "resume.copy"],
+  ["resume list", "Summaries only: counts, target, quota and pending proposals; no body or image bytes", "--archived", "resume.list"],
+  ["resume outline", "Section/entry structure without prose; use before reading entries", "", "resume.outline"],
+  ["resume get", "Read latest saved resume; photo omitted unless --photo", "--photo", "resume.get"],
+  ["resume create", "Create independent blank draft", "--id --title --language --idempotency-key --dry-run", "resume.create"],
+  ["resume copy", "Copy latest saved source to independent draft", "--id --title --version --idempotency-key --dry-run", "resume.copy"],
   ["resume archive", "Archive (not delete), only on user request", "--version", "resume.lifecycle.set"],
   ["resume restore", "Restore archive (not trash), only on user request", "--version", "resume.lifecycle.set"],
   ["history list", "Read saved business version snapshots", "", "history.list"],
   ["history changes", "Read audit changes since version", "--since", "history.changes"],
-  ["layout diagnose", "Actual saved-content renderer; targetPages supports only 1", "--target-pages", "resume.layout.diagnose"],
-  ["proposal submit", "Submit pending whole batch, never apply content", "--file", "proposal.submit"],
+  ["layout diagnose", "Actual renderer on saved content, a pending proposal, or an unsubmitted document", "--target-pages --proposal --file", "resume.layout.diagnose"],
+  ["proposal submit", "Submit pending whole batch with rationale/trade-offs, never apply content", "--file", "proposal.submit"],
   ["proposal list", "Read proposals for selected resume", "", "proposal.list"],
-  ["proposal get", "Read proposal status", "", "proposal.get"]
+  ["proposal get", "Read proposal status and the Agent's stated reasons", "", "proposal.get"],
+  ["proposal diff", "Added/removed/changed/kept per section and entry, short excerpts only", "", "proposal.diff"],
+  ["proposal preview", "Render the batch as it would be accepted: link, page images, PDF", "", "proposal.preview"],
+  ["brief get", "Durable goal, constraints, must-keep/drop and open questions", "", "resume.brief.get"],
+  ["brief update", "Record goal/constraints/questions; never enters the document", "--file", "resume.brief.update"],
+  ["target get", "Read target role, company, source URL and full JD context", "", "resume.target.get"],
+  ["target update", "Save target role, company, source URL or JD; never enters the exported resume", "--role --company --source --jd --jd-file --version --file", "resume.target.update"],
+  ["proposal decisions", "Accepted/rejected batches with the human's stated reason", "", "resume.decisions"]
 ];
 var printHelp = () => {
   const usage = {
@@ -20101,17 +20197,25 @@ var printHelp = () => {
     "action validate": "<actionName> [--file <input.json>] # or stdin",
     "action run": "<actionName> [--file <input.json>] # or stdin",
     "resume list": "[--archived]",
-    "resume get": "<resumeId>",
-    "resume create": "--id <newId> --title <title> [--language zh|en] [--idempotency-key <key>]",
-    "resume copy": "<sourceId> --id <newId> --title <title> --version <latestVersion> [--idempotency-key <key>]",
+    "resume outline": "<resumeId>",
+    "resume get": "<resumeId> [--photo]",
+    "resume create": "--id <newId> --title <title> [--language zh|en] [--idempotency-key <key>] [--dry-run]",
+    "resume copy": "<sourceId> --id <newId> --title <title> --version <latestVersion> [--idempotency-key <key>] [--dry-run]",
     "resume archive": "<resumeId> --version <latestVersion>",
     "resume restore": "<resumeId> --version <latestVersion>",
     "history list": "<resumeId>",
     "history changes": "<resumeId> [--since <n>]",
-    "layout diagnose": "<resumeId> [--target-pages 1]",
+    "layout diagnose": "<resumeId> [--target-pages 1] [--proposal <id>] [--file <document.json>]",
     "proposal submit": "[--file <proposal.json>] # or stdin",
     "proposal list": "<resumeId>",
-    "proposal get": "<proposalId>"
+    "proposal get": "<proposalId>",
+    "proposal diff": "<proposalId>",
+    "proposal preview": "<proposalId>",
+    "brief get": "<resumeId>",
+    "brief update": "[--file <brief.json>] # or stdin",
+    "target get": "<resumeId>",
+    "target update": "[<resumeId>] [--role <role>] [--company <company>] [--source <url>] [--jd <text>|--jd-file <jd.txt>] [--version <latestVersion>] [--file <target.json>]",
+    "proposal decisions": "<resumeId>"
   };
   const commands = commandSpecs.map(([command, description, flags, target]) => ({
     command: `folio ${command}`,
@@ -20155,7 +20259,7 @@ var checkArguments = () => {
   const spec = commandSpecs.find(([command]) => command === key);
   if (!spec) return fail("UNKNOWN_COMMAND", "\u672A\u77E5\u547D\u4EE4\uFF1B\u8BF7\u8FD0\u884C folio help \u6216 folio help --json\u3002");
   const flags = new Set(spec[2].split(" ").filter(Boolean));
-  const booleanFlags = /* @__PURE__ */ new Set(["--no-wait", "--replace", "--archived"]);
+  const booleanFlags = /* @__PURE__ */ new Set(["--no-wait", "--replace", "--archived", "--photo", "--dry-run"]);
   const positional = [];
   for (let i = key === "doctor" ? 1 : 2; i < args.length; i++) {
     const argument = args[i];
@@ -20172,6 +20276,7 @@ var checkArguments = () => {
     "action schema",
     "action validate",
     "action run",
+    "resume outline",
     "resume get",
     "resume copy",
     "resume archive",
@@ -20180,8 +20285,25 @@ var checkArguments = () => {
     "history changes",
     "layout diagnose",
     "proposal list",
-    "proposal get"
+    "proposal get",
+    "proposal diff",
+    "proposal preview",
+    "brief get",
+    "target get",
+    "proposal decisions"
   ].includes(key);
+  if (key === "target update") {
+    if (positional.length > 1 || positional.length === 1 && args[2] !== positional[0]) {
+      fail("INVALID_ARGUMENT", "\u7528\u6CD5\uFF1Afolio target update <resumeId> [--role ...] [--jd-file ...] \u6216 folio target update --file <target.json>\u3002");
+    }
+    if (option("--jd") !== void 0 && option("--jd-file") !== void 0) {
+      fail("INVALID_ARGUMENT", "--jd \u4E0E --jd-file \u4E0D\u80FD\u540C\u65F6\u4F7F\u7528\u3002");
+    }
+    if (option("--file") !== void 0 && (positional.length > 0 || ["--role", "--company", "--source", "--jd", "--jd-file", "--version"].some((flag) => option(flag) !== void 0))) {
+      fail("INVALID_ARGUMENT", "--file \u4E3A\u5B8C\u6574 JSON \u8F93\u5165\u6A21\u5F0F\uFF0C\u4E0D\u80FD\u4E0E\u4F4D\u7F6E\u53C2\u6570\u6216\u5355\u5B57\u6BB5\u53C2\u6570\u6DF7\u7528\u3002");
+    }
+    return;
+  }
   if (positional.length !== (needsId ? 1 : 0) || needsId && args[2] !== positional[0]) {
     fail("INVALID_ARGUMENT", needsId ? "\u547D\u4EE4\u540E\u9700\u8981\u4E14\u4EC5\u9700\u8981\u4E00\u4E2AID/\u52A8\u4F5C\u540D\uFF0C\u968F\u540E\u518D\u5199\u53C2\u6570\u3002" : "\u6B64\u547D\u4EE4\u4E0D\u63A5\u53D7\u4F4D\u7F6E\u53C2\u6570\u3002");
   }
@@ -20202,6 +20324,7 @@ var openBrowser = (url2) => {
   }
 };
 var announceVerificationUrl = (url2) => {
+  if (!process.stderr.isTTY) return;
   process.stderr.write(
     `[folio] \u8BF7\u5728\u6D4F\u89C8\u5668\u6253\u5F00\u5E76\u786E\u8BA4\u6388\u6743\uFF1A${url2}
 [folio] \u82E5\u6D4F\u89C8\u5668\u672A\u81EA\u52A8\u6253\u5F00\uFF0C\u590D\u5236\u4E0A\u9762\u7684\u94FE\u63A5\u5230\u5DF2\u767B\u5F55 Folio \u7684\u6D4F\u89C8\u5668\u5373\u53EF\u3002
@@ -20226,6 +20349,8 @@ async function main() {
         "replace_document must be the sole change",
         "Agent document photo must be external_agent_synthetic and fictional=true",
         "Document photo presence and style.photoMode=uploaded must agree",
+        "notes.rationale[].target is document|style|photo|target|order|section:<id>|entry:<id>",
+        "State trade-offs, rejected options and open questions; the next Agent inherits them",
         "JSON Schema cannot express all custom refinements; action validate also checks these"
       ] : [],
       authoritativeSource: "packages/resume-actions/src/actions.ts; packages/resume-domain/src/index.ts"
@@ -20312,10 +20437,14 @@ async function main() {
         if (error62.code !== "UNAUTHORIZED") throw error62;
       }
     }
+    if (command === "complete" && !config2.pending) {
+      throw Object.assign(new Error("\u6CA1\u6709\u5F85\u5B8C\u6210\u914D\u5BF9\uFF0C\u8BF7\u5148 auth login --no-wait\u3002"), { code: "PAIRING_NOT_STARTED" });
+    }
     const reusePending = command === "login" && config2.pending && !args.includes("--replace") && Date.parse(config2.pending.expiresAt) > Date.now();
     if (reusePending && expectedEmail !== config2.pending?.expectedEmail) {
       fail("ACCOUNT_MISMATCH", "\u5F85\u6279\u51C6\u8BF7\u6C42\u5C5E\u4E8E\u5176\u4ED6\u9884\u671F\u8D26\u53F7\uFF1B\u4F7F\u7528\u72EC\u7ACBprofile\uFF0C\u65E7\u51ED\u8BC1\u4FDD\u7559\u3002");
     }
+    assertProfileWritable();
     const start = command === "complete" || reusePending ? config2.pending : await request("/api/device/start", {
       method: "POST",
       body: {
@@ -20327,7 +20456,8 @@ async function main() {
           "resume:archive",
           "proposal:read",
           "proposal:submit",
-          "history:read"
+          "history:read",
+          "brief:write"
         ]
       }
     });
@@ -20415,6 +20545,18 @@ async function main() {
           await new Promise((resolve) => setTimeout(resolve, 1500));
           continue;
         }
+        if (error62.code === "DEVICE_CONSUMED") {
+          try {
+            const { pending: _pending, ...rest } = loadConfig();
+            saveConfig(rest);
+          } catch {
+          }
+          fail(
+            "DEVICE_CONSUMED",
+            "\u8BBE\u5907\u6388\u6743\u7801\u5DF2\u88AB\u6D88\u8D39\u4E14\u672C\u5730\u672A\u6301\u6709\u5BF9\u5E94\u65B0\u51ED\u8BC1\uFF1B\u5DF2\u6E05\u7406\u5931\u6548\u5F85\u914D\u5BF9\u8BB0\u5F55\uFF0C\u8BF7\u91CD\u65B0\u6267\u884C folio auth login --no-wait\u3002",
+            { nextCommand: "folio auth login --no-wait", origin, profile: configDirectory }
+          );
+        }
         throw error62;
       }
     }
@@ -20424,16 +20566,18 @@ async function main() {
     const config2 = loadConfig();
     assertProfileOrigin(config2);
     if (!config2.tokenStorage && !config2.token && !process.env.FOLIO_TOKEN) {
+      const state = config2.pending ? Date.parse(config2.pending.expiresAt) <= Date.now() ? "pairing_expired" : "awaiting_browser_approval" : "not_connected";
       console.log(JSON.stringify({
         ok: true,
-        state: config2.pending ? Date.parse(config2.pending.expiresAt) <= Date.now() ? "pairing_expired" : "awaiting_browser_approval" : "not_connected",
+        state,
         origin,
         profile: configDirectory,
         pending: config2.pending ? {
           verificationUri: config2.pending.verificationUri,
           expiresAt: config2.pending.expiresAt,
           expectedEmail: config2.pending.expectedEmail
-        } : void 0
+        } : void 0,
+        nextCommand: state === "awaiting_browser_approval" ? "folio auth complete --no-wait" : "folio auth login --no-wait"
       }, null, 2));
       return;
     }
@@ -20482,26 +20626,103 @@ async function main() {
     return;
   }
   if (group === "resume" && command === "get") {
-    await action("resume.get", { resumeId: args[2] });
+    await action("resume.get", { resumeId: args[2], includePhoto: args.includes("--photo") });
+    return;
+  }
+  if (group === "resume" && command === "outline") {
+    await action("resume.outline", { resumeId: args[2] });
     return;
   }
   if (group === "resume" && command === "create") {
-    await action("resume.create", {
+    const payload = {
       resumeId: option("--id"),
       title: option("--title"),
       language: option("--language") ?? "zh",
       idempotencyKey: option("--idempotency-key") ?? option("--id")
-    });
+    };
+    if (args.includes("--dry-run")) {
+      const validated = validateInput("resume.create", payload);
+      const token = requireToken();
+      const catalog = await request("/api/actions", { token });
+      if (!Array.isArray(catalog.actions) || !catalog.actions.some((entry2) => entry2.name === "resume.create")) {
+        fail("ACTION_NOT_AUTHORIZED", "\u5F53\u524D\u8FDE\u63A5\u7684\u6388\u6743catalog\u4E0D\u5305\u542B\u6B64\u52A8\u4F5C\u3002\u8BF7\u4EBA\u6838\u5BF9\u8FDE\u63A5\u6743\u9650\u3002");
+      }
+      const listed = (await request("/api/actions/resume.list", {
+        method: "POST",
+        token,
+        body: { includeArchived: true }
+      })).result;
+      const idempotentExisting = listed.resumes.some((item) => item.id === validated.resumeId);
+      const wouldSucceed = idempotentExisting || listed.quota.remaining > 0;
+      console.log(JSON.stringify({
+        ok: true,
+        dryRun: true,
+        action: "resume.create",
+        resumeId: validated.resumeId,
+        title: validated.title,
+        language: validated.language,
+        wouldSucceed,
+        idempotentExisting,
+        ...wouldSucceed ? {} : { blocker: "QUOTA_EXCEEDED" },
+        quota: listed.quota
+      }, null, 2));
+      return;
+    }
+    await action("resume.create", payload);
     return;
   }
   if (group === "resume" && command === "copy") {
-    await action("resume.copy", {
+    const payload = {
       sourceResumeId: args[2],
       newResumeId: option("--id"),
       title: option("--title"),
       expectedSourceVersion: Number(option("--version")),
       idempotencyKey: option("--idempotency-key") ?? option("--id")
-    });
+    };
+    if (args.includes("--dry-run")) {
+      const validated = validateInput("resume.copy", payload);
+      const token = requireToken();
+      const catalog = await request("/api/actions", { token });
+      if (!Array.isArray(catalog.actions) || !catalog.actions.some((entry2) => entry2.name === "resume.copy")) {
+        fail("ACTION_NOT_AUTHORIZED", "\u5F53\u524D\u8FDE\u63A5\u7684\u6388\u6743catalog\u4E0D\u5305\u542B\u6B64\u52A8\u4F5C\u3002\u8BF7\u4EBA\u6838\u5BF9\u8FDE\u63A5\u6743\u9650\u3002");
+      }
+      const listed = (await request("/api/actions/resume.list", {
+        method: "POST",
+        token,
+        body: { includeArchived: true }
+      })).result;
+      const idempotentExisting = listed.resumes.some((item) => item.id === validated.newResumeId);
+      let currentSourceVersion;
+      let blocker;
+      if (!idempotentExisting) {
+        const outlineRes = (await request("/api/actions/resume.outline", {
+          method: "POST",
+          token,
+          body: { resumeId: validated.sourceResumeId }
+        })).result;
+        currentSourceVersion = outlineRes.outline.version;
+        if (currentSourceVersion !== validated.expectedSourceVersion) {
+          blocker = "STALE_VERSION";
+        } else if (listed.quota.remaining <= 0) {
+          blocker = "QUOTA_EXCEEDED";
+        }
+      }
+      console.log(JSON.stringify({
+        ok: true,
+        dryRun: true,
+        action: "resume.copy",
+        sourceResumeId: validated.sourceResumeId,
+        newResumeId: validated.newResumeId,
+        expectedSourceVersion: validated.expectedSourceVersion,
+        ...currentSourceVersion !== void 0 ? { currentSourceVersion } : {},
+        wouldSucceed: !blocker,
+        idempotentExisting,
+        ...blocker ? { blocker } : {},
+        quota: listed.quota
+      }, null, 2));
+      return;
+    }
+    await action("resume.copy", payload);
     return;
   }
   if (group === "resume" && ["archive", "restore"].includes(command)) {
@@ -20524,9 +20745,36 @@ async function main() {
     return;
   }
   if (group === "layout" && command === "diagnose") {
+    const proposalId = option("--proposal");
+    const documentFile = option("--file");
+    if (proposalId && documentFile) {
+      fail("INVALID_ARGUMENT", "\u4E00\u6B21\u53EA\u80FD\u8BCA\u65AD\u4E00\u4E2A\u5BF9\u8C61\uFF1A--proposal \u6216 --file\u3002");
+    }
+    let docPayload;
+    if (documentFile) {
+      const raw = await readPayload();
+      const inner = raw && typeof raw === "object" && !Array.isArray(raw) ? raw.document ?? raw.resume ?? raw : raw;
+      if (inner && typeof inner === "object" && !Array.isArray(inner) && ("id" in inner || "version" in inner || "savedAt" in inner || "userId" in inner)) {
+        const {
+          id: _id,
+          userId: _userId,
+          lifecycle: _lifecycle,
+          origin: _origin,
+          derivedFrom: _derivedFrom,
+          version: _version,
+          savedAt: _savedAt,
+          ...rest
+        } = inner;
+        docPayload = rest;
+      } else {
+        docPayload = inner;
+      }
+    }
     await action("resume.layout.diagnose", {
       resumeId: args[2],
-      targetPages: Number(option("--target-pages") ?? 1)
+      targetPages: Number(option("--target-pages") ?? 1),
+      ...proposalId ? { proposalId } : {},
+      ...documentFile ? { document: docPayload } : {}
     });
     return;
   }
@@ -20540,6 +20788,57 @@ async function main() {
   }
   if (group === "proposal" && command === "get") {
     await action("proposal.get", { proposalId: args[2] });
+    return;
+  }
+  if (group === "proposal" && command === "diff") {
+    await action("proposal.diff", { proposalId: args[2] });
+    return;
+  }
+  if (group === "proposal" && command === "preview") {
+    await action("proposal.preview", { proposalId: args[2] });
+    return;
+  }
+  if (group === "proposal" && command === "decisions") {
+    await action("resume.decisions", { resumeId: args[2] });
+    return;
+  }
+  if (group === "brief" && command === "get") {
+    await action("resume.brief.get", { resumeId: args[2] });
+    return;
+  }
+  if (group === "brief" && command === "update") {
+    await action("resume.brief.update", await readPayload());
+    return;
+  }
+  if (group === "target" && command === "get") {
+    await action("resume.target.get", { resumeId: args[2] });
+    return;
+  }
+  if (group === "target" && command === "update") {
+    const positionalId = args[2] && !args[2].startsWith("-") ? args[2] : void 0;
+    if (!positionalId) {
+      await action("resume.target.update", await readPayload());
+      return;
+    }
+    let jdValue = option("--jd");
+    const jdFile = option("--jd-file");
+    if (jdFile !== void 0) {
+      try {
+        jdValue = readFileSync(String(jdFile), "utf8");
+      } catch {
+        fail("INPUT_FILE_ERROR", "\u65E0\u6CD5\u8BFB\u53D6 --jd-file \u6307\u5B9A\u7684\u6587\u4EF6\uFF1B--jd-file\u76F8\u5BF9\u8C03\u7528\u65B9cwd\uFF0C\u672A\u53D1\u9001\u4E1A\u52A1\u8BF7\u6C42\u3002");
+      }
+    }
+    const payload = {
+      resumeId: positionalId,
+      ...option("--version") !== void 0 ? { expectedVersion: Number(option("--version")) } : {},
+      ...option("--role") !== void 0 ? { role: option("--role") } : {},
+      ...option("--company") !== void 0 ? { company: option("--company") } : {},
+      ...option("--source") !== void 0 ? { source: option("--source") } : {},
+      ...jdValue !== void 0 ? { jd: jdValue } : {}
+    };
+    validateInput("resume.target.update", payload);
+    await action("resume.target.update", payload);
     return;
   }
   fail("UNKNOWN_COMMAND", "\u672A\u77E5\u547D\u4EE4\uFF1B\u8BF7\u8FD0\u884C folio help\u3002");

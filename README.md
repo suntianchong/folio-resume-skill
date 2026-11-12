@@ -11,10 +11,13 @@ Folio 产品内部没有任何 AI。这个仓库只提供「Agent 与 Folio 通�
 
 | 路径 | 说明 |
 |---|---|
-| `SKILL.md` | Skill 主文件（Agent 从这里开始读） |
+| `SKILL.md` | Skill 主文件（Agent 从这里开始读，渐进式披露入口） |
 | `START-HERE.md` | 安装与最短上手说明 |
-| `references/tasks.md` | 读取/创建/复制/归档/Proposal 工作流 |
+| `references/tasks.md` | 读取/创建/复制/归档/目标岗位 JD/Proposal 工作流 |
 | `references/complete-resume.md` | 整篇重写与合成头像的边界 |
+| `references/playbook-and-pitfalls.md` | 黄金工作流、单页容量表、排版与授权排障手册 |
+| `references/writing-craft.md` | 简历内容打磨方法论（三层改法、零虚构量化挖掘、JD 匹配闭环） |
+| `references/industry-and-role-patterns.md` | 4 类企业性质与 12 类核心岗位审阅范式与选版参考 |
 | `COMPLETE-RESUME-TASK.md` | 虚构样例任务卡（仅演示） |
 | `folio` | 启动包装器（解析 Node 与 CLI，不自动安装任何软件） |
 | `bin/folio.mjs` | 已构建的 Folio CLI（随仓库分发，无需本地源码） |

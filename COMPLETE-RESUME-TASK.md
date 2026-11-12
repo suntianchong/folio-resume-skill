@@ -91,15 +91,17 @@ Folio本身没有生成能力，实际预览/接受/导出由我操作。
 
 执行要求：
 1. 先读取 folio_agent_demo_01 的最新版本和历史；
-   并用 layout diagnose 对当前已保存内容诊断排版；不得盲猜容量，
-   不得把该结果冒称为待审新正文的实测页数；
-2. 根据以上资料润色并构建完整结构化简历；
-3. 使用 Skill 的 replace_document，正文和头像作为同一批 Proposal；
-4. factBasis=user_provided，polishPolicy=no_new_facts；
-5. Proposal ID：proposal_folio_complete_resume_v1；
-6. 幂等键：folio-complete-resume-v1；
-7. 不能直接应用、接受、导出、删除、备份、分享或外发；
-8. 提交后回读 Proposal 与简历，确认 Proposal=pending，当前已接受简历未变化；
-9. 汇报章节、记录、头像来源、你做过的润色，以及所有未改变的事实；
-10. 等我在 Folio 中看完整预览并整批接受或拒绝。
+   并用 layout diagnose 对当前已保存内容诊断排版；不得盲猜容量；
+2. 构建完整正文后，先 layout diagnose --file 对拟提交正文干跑排版，
+   确认 source=document 的页数与溢出结论；只有这一步的结果才能称为
+   「新正文的实测页数」；
+3. 根据以上资料润色并构建完整结构化简历；
+4. 使用 Skill 的 replace_document，正文和头像作为同一批 Proposal；
+5. factBasis=user_provided，polishPolicy=no_new_facts；
+6. Proposal ID：proposal_folio_complete_resume_v1；
+7. 幂等键：folio-complete-resume-v1；
+8. 不能直接应用、接受、导出、删除、备份、分享或外发；
+9. 提交后回读 Proposal 与简历，确认 Proposal=pending，当前已接受简历未变化；
+10. 汇报章节、记录、头像来源、你做过的润色，以及所有未改变的事实；
+11. 等我在 Folio 中看完整预览并整批接受或拒绝。
 ```
