@@ -95,11 +95,11 @@ demo from an existing resume (e.g. `v8`), follow this exact 7-step loop:
       (`fontSize: 9.75`, `lineHeight: 1.2`, `sectionGap: 6`, `pageMargin: 22.7`).
       Prefer trimming low-relevance bullets or switching to a higher-capacity
       template before pushing typography below `readabilityFloor`.
-- **Single-page template pixel capacity (`availableHeight`)**:
+- **Single-page template pixel capacity (`availableHeight`) & current 18 `templateId` catalog (16 formal + 2 research)**:
   - `cn-classic` (Chinese serif, A4): **`808.87px`** — highest capacity (+48.87px over `onyx`)
-  - `onyx` / `rhyhorn` / `bronzor` / `persian` (A4 canvas): **`760px`**
-  - `en-classic` (English sans-serif, Letter): **`695.3px`**
-  - `en-engineering` (English dense serif, Letter): **`684.71px`**
+  - Modern Chinese & multi-language A4 templates (**`760px`**): formal `cn-modern`, `cn-sidebar`, `cn-editorial`, `cn-banner`, `cn-tech`, `cn-campus` (campus & academic), `cn-charcoal-rail` (dark left rail), `cn-accent-frame` (left bar accent), `cn-timeline` (vertical timeline), `onyx`, `rhyhorn`; research `bronzor`, `persian`
+  - English Letter templates: `en-classic` (**`695.3px`**), `en-executive` (**`692.47px`**, executive serif, Letter), `en-academic` (**`691.47px`**, academic & research CV, Letter), `en-engineering` (**`684.71px`**, dense technical serif)
+  - Optional style controls shared across templates: `photoPosition` (`right` | `left` | `top-center`), `photoSize` (`sm` | `md` | `lg`) — always validate via `action schema proposal.submit` before submitting.
 
 ### Step 6 — Submit a self-explaining whole-batch Proposal
 ```bash

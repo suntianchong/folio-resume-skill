@@ -40,9 +40,9 @@ Before rewriting prose, run `folio brief get <resumeId>`. If target context is m
 4. **Enterprise Archetype** *(governs overall tone — see [industry-and-role-patterns.md](industry-and-role-patterns.md))*:
    - `大厂 (互联网/科技)` | `国央企` | `银行/金融机构` | `外企/跨国公司` | `私企/创业公司`
 5. **Career Transition Mode**: Same track (`不转行`) / Role switch (`同行业换岗`) / Industry switch (`同岗换行业`) / Dual switch (`双跨`) / Gap restart (`空档期重启`) / Returnee (`海归回国`)
-6. **Language & Template Fit**:
-   - Chinese (`zh`): prefer `cn-classic` (`808.87px` single-page capacity, highest density for rich Chinese resumes), `rhyhorn` (`760px`, tech/FDE single-column), or `onyx` (`760px`, general internet single-column).
-   - English (`en`): prefer `en-classic` (`695.3px`, Letter) or `en-engineering` (`684.71px`, dense technical/research serif).
+6. **Language & Template Fit** *(all 16 formal templates; verify live schema via `folio action schema proposal.submit`)*:
+   - Chinese (`zh`, A4): `cn-classic` (`808.87px` highest density), `cn-modern` / `onyx` (internet & product), `cn-tech` / `rhyhorn` (engineering & FDE), `cn-campus` (new grad & academic), `cn-sidebar` / `cn-charcoal-rail` / `cn-editorial` / `cn-banner` / `cn-accent-frame` / `cn-timeline` (structured multi-column, leadership, or chronological roles).
+   - English (`en`, Letter): `en-classic` (`695.3px`), `en-engineering` (`684.71px`, dense technical serif), `en-executive` (senior/management), or `en-academic` (academic & research CV).
 
 ---
 

@@ -15,7 +15,7 @@ fi
 if [ -z "$CLI" ] && [ -n "$PROJECT_ROOT" ]; then
   CLI="$PROJECT_ROOT/apps/folio-cli/dist/folio.mjs"
 fi
-# Standalone distribution: this repository ships its own built CLI.
+# Standalone distribution: the public Skill repository ships its own built CLI.
 if [ -z "$CLI" ] && [ -f "$SKILL_DIR/bin/folio.mjs" ]; then
   CLI="$SKILL_DIR/bin/folio.mjs"
 fi

@@ -19739,6 +19739,30 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// packages/resume-domain/src/style-constants.ts
+var TEMPLATE_IDS = [
+  "onyx",
+  "bronzor",
+  "persian",
+  "rhyhorn",
+  "cn-classic",
+  "cn-modern",
+  "cn-sidebar",
+  "cn-editorial",
+  "cn-banner",
+  "cn-tech",
+  "cn-campus",
+  "cn-charcoal-rail",
+  "cn-accent-frame",
+  "cn-timeline",
+  "en-classic",
+  "en-engineering",
+  "en-executive",
+  "en-academic"
+];
+var PHOTO_POSITIONS = ["right", "left", "top-center"];
+var PHOTO_SIZES = ["sm", "md", "lg"];
+
 // apps/folio-cli/src/folio.ts
 var id = external_exports.string().min(1);
 var version2 = external_exports.number().int().positive();
@@ -19768,7 +19792,7 @@ var section = external_exports.object({
   entries: external_exports.array(entry).min(1)
 });
 var style = external_exports.object({
-  templateId: external_exports.enum(["onyx", "bronzor", "persian", "rhyhorn", "cn-classic", "en-classic", "en-engineering"]),
+  templateId: external_exports.enum(TEMPLATE_IDS),
   accentColor: external_exports.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a six-digit HEX color.").transform((value) => value.toLowerCase()),
   fontSize: external_exports.number().min(9.75).max(14),
   lineHeight: external_exports.number().min(1.2).max(1.8),
@@ -19776,6 +19800,8 @@ var style = external_exports.object({
   pageMargin: external_exports.number().min(22.7).max(60),
   photoMode: external_exports.enum(["none", "placeholder", "synthetic", "uploaded"]),
   photoShape: external_exports.enum(["square", "circle"]),
+  photoPosition: external_exports.enum(PHOTO_POSITIONS).optional(),
+  photoSize: external_exports.enum(PHOTO_SIZES).optional(),
   photoScale: external_exports.number().min(80).max(140),
   photoX: external_exports.number().min(-25).max(25),
   photoY: external_exports.number().min(-25).max(25),
@@ -20349,7 +20375,7 @@ async function main() {
         "replace_document must be the sole change",
         "Agent document photo must be external_agent_synthetic and fictional=true",
         "Document photo presence and style.photoMode=uploaded must agree",
-        "notes.rationale[].target is document|style|photo|target|order|section:<id>|entry:<id>",
+        "notes.rationale[].target is document|style:<key>|style|photo|target|order|section:<id>|entry:<id>",
         "State trade-offs, rejected options and open questions; the next Agent inherits them",
         "JSON Schema cannot express all custom refinements; action validate also checks these"
       ] : [],

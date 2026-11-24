@@ -3,7 +3,7 @@ name: folio-resume-workbench
 description: Use the user's Folio CLI to read saved resumes/history, create or copy independent drafts, diagnose layout, archive/restore on request, and submit whole-batch proposals for human review. Use for Folio resume tasks and pairing; never accept/reject, delete, export or share.
 metadata:
   event_date: "2026-11-08"
-  recorded_at: "2026-11-08 22:51:48"
+  recorded_at: "2026-11-21 05:09:43"
   domain: "interview"
   type: "component"
   client: "codex"
@@ -46,6 +46,10 @@ Installation and the shortest handoff message: [START-HERE.md](START-HERE.md).
    Browser login and CLI identity are independent.
 
 ## Discover only what this task needs
+
+- For "看看我的机会" / current market opportunities and a version-bound job table,
+  read [references/opportunities.md](references/opportunities.md). External
+  authorized search only; no score/application or automatic Folio report saving.
 
 - `help --json`: commands, flags, exits and environment (offline).
 - `action catalog`: live account/scope-filtered permissions (connected).
@@ -104,7 +108,7 @@ Installation and the shortest handoff message: [START-HERE.md](START-HERE.md).
   proposal with `proposal get` only when you need its exact changes.
 - Every batch you submit must state its own reasoning, because the reviewer sees
   the proposal without your chat: `notes.rationale` (one entry per changed item,
-  `target` = `document` / `style` / `photo` / `target` / `order` /
+  `target` = `document` / `style:<key>` (or `style`) / `photo` / `target` / `order` /
   `section:<id>` / `entry:<id>`), `notes.tradeoffs` (what the user gives up),
   `notes.rejected` (options you considered and dropped, with the reason) and
   `notes.openQuestions`. The next Agent inherits these; do not rely on being the

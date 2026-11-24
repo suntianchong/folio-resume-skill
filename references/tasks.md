@@ -81,7 +81,7 @@ Read latest resume and stable section/entry IDs. Supported `changes[].op`:
 ```
 
 `notes` is how the proposal explains itself to the reviewer and to the next
-Agent. `rationale[].target` must be one of `document`, `style`, `photo`,
+Agent. `rationale[].target` must be one of `document`, `style:<key>` (or `style`), `photo`,
 `target`, `order`, `section:<id>` or `entry:<id>`; put one entry per item you
 actually touched. Use `tradeoffs` for what the user gives up, `rejected` for
 options you dropped and why, `openQuestions` for anything you could not decide
