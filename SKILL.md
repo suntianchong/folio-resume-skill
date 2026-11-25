@@ -21,10 +21,14 @@ actions, not SQLite, browser DOM/storage, source files or original attachments.
 ## Tool and connection
 
 `SKILL_DIR` is the directory containing this file. Invoke `"$SKILL_DIR/folio"`;
-caller cwd need not be the project. Node 24+ and a built Folio CLI are required.
-When copied into an Agent's skill directory, set `FOLIO_PROJECT_ROOT` to the
-absolute Folio project/client directory, or `FOLIO_CLI_BIN` to an already
-installed CLI's absolute path. No automatic software installation or builds.
+caller cwd need not be the project. Node 24+ is required.
+When installed from the standalone public Skill repository (`folio-resume-skill`),
+the wrapper resolves the bundled `bin/folio.mjs` automatically — no Folio source
+checkout, `npm install`, `FOLIO_PROJECT_ROOT`, or `FOLIO_CLI_BIN` is needed.
+Only when copied out of a Folio source checkout without `bin/folio.mjs` (or when
+overriding the CLI path), set `FOLIO_PROJECT_ROOT` to the absolute Folio
+directory or `FOLIO_CLI_BIN` to an already installed CLI's absolute path.
+No automatic software installation or builds.
 Installation and the shortest handoff message: [START-HERE.md](START-HERE.md).
 
 1. Run `doctor`, then `auth status`; verify returned origin and account against

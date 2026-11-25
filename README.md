@@ -18,6 +18,7 @@ Folio 产品内部没有任何 AI。这个仓库只提供「Agent 与 Folio 通�
 | `references/playbook-and-pitfalls.md` | 黄金工作流、单页容量表、排版与授权排障手册 |
 | `references/writing-craft.md` | 简历内容打磨方法论（三层改法、零虚构量化挖掘、JD 匹配闭环） |
 | `references/industry-and-role-patterns.md` | 4 类企业性质与 12 类核心岗位审阅范式与选版参考 |
+| `references/opportunities.md` | 外部授权岗位搜寻与版本绑定机会记录 JSON 契约（不自动投递或写回） |
 | `COMPLETE-RESUME-TASK.md` | 虚构样例任务卡（仅演示） |
 | `folio` | 启动包装器（解析 Node 与 CLI，不自动安装任何软件） |
 | `bin/folio.mjs` | 已构建的 Folio CLI（随仓库分发，无需本地源码） |

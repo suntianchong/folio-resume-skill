@@ -12,28 +12,21 @@ superseded_by: null
 
 # Install / start
 
-## Standalone repository (this repo)
+## Public install source
 
-This repository is self-contained: it ships the Skill plus a built CLI at
-`bin/folio.mjs`. Clone it into the Agent's skill directory — no local Folio
-source checkout and no global install are required.
+Users can clone the standalone Skill repository (it ships the built CLI, so no
+local Folio checkout is needed):
 
 ```bash
-DEST="${CODEX_HOME:-$HOME/.codex}/skills/folio-resume-workbench"  # use your Agent's real skills dir
-test ! -e "$DEST" || { echo "已有Skill；请先确认如何更新" >&2; exit 1; }
-git clone <this repo> "$DEST" && chmod +x "$DEST/folio"
+DEST="${CODEX_HOME:-$HOME/.codex}/skills/folio-resume-workbench"  # use that Agent's real skills dir
+git clone https://github.com/suntianchong/folio-resume-skill "$DEST"
+chmod +x "$DEST/folio"
 ```
 
-Then point the Agent at `$DEST/SKILL.md`. The wrapper resolves, in order:
-`FOLIO_CLI_BIN` → `FOLIO_PROJECT_ROOT/apps/folio-cli/dist/folio.mjs` →
-bundled `bin/folio.mjs` → PATH-installed `folio`. It never installs software.
-
-## Using the Skill inside the Folio project
-
-Give your Agent the absolute `<FOLIO_PROJECT_ROOT>/apps/folio-cli/skill/SKILL.md`
-path, or use Folio's “账户 → 外部 Agent 配置” current handoff message. Read the
-Skill, not every reference. Requires Node 24+, built CLI and a user-started
-Folio service.
+No global install is required: give your Agent the absolute
+`<FOLIO_PROJECT_ROOT>/apps/folio-cli/skill/SKILL.md` path, or use Folio's
+“账户 → 外部 Agent 配置” current handoff message. Read the Skill, not every
+reference. Requires Node 24+, built CLI and a user-started Folio service.
 
 ## Optional copy into an Agent skill directory
 
@@ -63,8 +56,9 @@ It does not auto-build; maintainer command if needed:
 ## Shortest connection message
 
 ```text
-请读取 <absolute Skill path>/SKILL.md，使用同目录folio。
-FOLIO_PROJECT_ROOT=<absolute Folio directory>
+请读取并严格遵守 Folio Skill：https://github.com/suntianchong/folio-resume-skill
+若这台电脑上还没有 Skill，先经我同意再 clone 该仓库到你的 skills 目录，
+chmod +x folio；仓库自带 bin/folio.mjs，不需要 Folio 源码或 npm 安装。
 FOLIO_ORIGIN=<the API address shown by my Folio>
 FOLIO_CONFIG_DIR=<separate absolute profile directory for this client/environment>
 预期账号：<my confirmed Folio email>。
